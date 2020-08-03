@@ -9,7 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/athena/athenaiface"
 )
 
-type rows struct {
+type Rows struct {
 	athena  athenaiface.AthenaAPI
 	queryID string
 
@@ -24,8 +24,8 @@ type rowsConfig struct {
 	SkipHeader bool
 }
 
-func newRows(cfg rowsConfig) (*rows, error) {
-	r := rows{
+func newRows(cfg rowsConfig) (*Rows, error) {
+	r := Rows{
 		athena:        cfg.Athena,
 		queryID:       cfg.QueryID,
 		skipHeaderRow: cfg.SkipHeader,
@@ -40,7 +40,7 @@ func newRows(cfg rowsConfig) (*rows, error) {
 	return &r, nil
 }
 
-func (r *rows) Columns() []string {
+func (r *Rows) Columns() []string {
 	var columns []string
 	for _, colInfo := range r.out.ResultSet.ResultSetMetadata.ColumnInfo {
 		columns = append(columns, *colInfo.Name)
@@ -49,7 +49,7 @@ func (r *rows) Columns() []string {
 	return columns
 }
 
-func (r *rows) ColumnTypeDatabaseTypeName(index int) string {
+func (r *Rows) ColumnTypeDatabaseTypeName(index int) string {
 	colInfo := r.out.ResultSet.ResultSetMetadata.ColumnInfo[index]
 	if colInfo.Type != nil {
 		return *colInfo.Type
@@ -57,7 +57,7 @@ func (r *rows) ColumnTypeDatabaseTypeName(index int) string {
 	return ""
 }
 
-func (r *rows) Next(dest []driver.Value) error {
+func (r *Rows) Next(dest []driver.Value) error {
 	if r.done {
 		return io.EOF
 	}
@@ -90,7 +90,11 @@ func (r *rows) Next(dest []driver.Value) error {
 	return nil
 }
 
-func (r *rows) fetchNextPage(token *string) (bool, error) {
+func (r Rows) GetQueryID() string {
+	return r.queryID
+}
+
+func (r *Rows) fetchNextPage(token *string) (bool, error) {
 	var err error
 	r.out, err = r.athena.GetQueryResults(&athena.GetQueryResultsInput{
 		QueryExecutionId: aws.String(r.queryID),
@@ -116,7 +120,7 @@ func (r *rows) fetchNextPage(token *string) (bool, error) {
 	return true, nil
 }
 
-func (r *rows) Close() error {
+func (r *Rows) Close() error {
 	r.done = true
 	return nil
 }
